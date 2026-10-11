@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+build/
+dist/
+ci-data/
+outputs/*
+!outputs/.gitkeep
+uploads/*
+!uploads/.gitkeep
+inbox/
+launcher.log
+app.log
+_backup_before_seamless/
+.DS_Store
