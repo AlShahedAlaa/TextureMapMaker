@@ -1,6 +1,7 @@
 # Builds the Mac and Windows apps.
-#  - Every push / manual run: apps are attached to the run as downloadable "artifacts".
-#  - Push a tag like v1.1.0: a GitHub Release is created with the installers attached.
+#  - Every push to main: apps are built, self-tested, and published to the
+#    GitHub Release named after version.py (e.g. v1.1.0). Bump version.py to
+#    start a new release; pushes without a bump refresh the current one.
 name: Build desktop apps
 
 on:
@@ -120,10 +121,26 @@ jobs:
             dist/*-Portable.zip
           if-no-files-found: error
 
-      - name: Attach to GitHub Release (tags only)
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Publish GitHub Release v<version.py>
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ steps.ver.outputs.version }}
+          name: Texture Map Maker ${{ steps.ver.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          make_latest: "true"
+          body: |
+            ## Download
+            | System | File |
+            |---|---|
+            | Mac — Apple Silicon (M1–M4) | `TextureMapMaker-${{ steps.ver.outputs.version }}-macOS-AppleSilicon.dmg` |
+            | Mac — Intel | `TextureMapMaker-${{ steps.ver.outputs.version }}-macOS-Intel.dmg` |
+            | Windows (installer) | `TextureMapMaker-${{ steps.ver.outputs.version }}-Windows-Setup.exe` |
+            | Windows (no install) | `TextureMapMaker-${{ steps.ver.outputs.version }}-Windows-Portable.zip` |
+
+            Free · offline · no API key. Diffuse → Normal / Height / Roughness / AO, seamless textures, live 3D preview.
+
+            **First launch:** Mac — System Settings → Privacy & Security → *Open Anyway*. Windows — *More info → Run anyway*.
           files: |
             dist/*.dmg
             dist/*-Setup.exe

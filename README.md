@@ -46,12 +46,8 @@ python3 -m pip install pywebview && python3 desktop.py
 Mac apps must be built on a Mac and Windows apps on Windows, so GitHub builds both automatically (`.github/workflows/build.yml`):
 
 1. Push this folder to a GitHub repository.
-2. Every push builds the apps → **Actions** tab → open the run → **Artifacts** at the bottom.
-3. To publish a release: bump `version.py`, then
-   ```bash
-   git tag v1.1.0 && git push --tags
-   ```
-   The `.dmg`, `Setup.exe` and portable `.zip` appear on the **Releases** page.
+2. Every push to `main` builds the apps and publishes them to the **Releases** page as `v<version>` (from `version.py`).
+3. New version: change `version.py` (e.g. `1.2.0`) and push — a new release appears with the `.dmg`, `Setup.exe` and portable `.zip`.
 
 Each build runs a self-test of the packaged app (UI, 3D library, seamless maps) before publishing.
 
