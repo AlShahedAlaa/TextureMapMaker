@@ -20,6 +20,13 @@ If macOS says it "cannot verify" the app the first time:
 (Only needed once.)
 TXT
 rm -f "$OUT"
-hdiutil create -volname "Texture Map Maker" -srcfolder "$STAGE" -ov -format UDZO "$OUT"
+# hdiutil sometimes fails with "Resource busy" on CI machines — retry a few times
+for attempt in 1 2 3 4 5; do
+  if hdiutil create -volname "Texture Map Maker" -srcfolder "$STAGE" -ov -format UDZO "$OUT"; then
+    break
+  fi
+  [ "$attempt" = 5 ] && exit 1
+  echo "hdiutil failed (attempt $attempt), retrying..."; sleep 5
+done
 rm -rf "$STAGE"
 echo "$OUT"

@@ -41,9 +41,9 @@ jobs:
       APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -83,7 +83,7 @@ jobs:
 
       - name: Make .dmg
         if: matrix.kind == 'mac'
-        run: packaging/make_dmg.sh "${{ steps.ver.outputs.version }}" "$(uname -m)"
+        run: bash packaging/make_dmg.sh "${{ steps.ver.outputs.version }}" "$(uname -m)"
 
       - name: Notarize .dmg (only if Apple secrets are set)
         if: matrix.kind == 'mac' && env.APPLE_ID != '' && env.APPLE_CERT_P12 != ''
