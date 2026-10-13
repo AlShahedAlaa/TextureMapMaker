@@ -3,8 +3,8 @@
   "version": "1.1.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx server.ts",
-    "start": "tsx server.ts",
+    "dev": "NODE_OPTIONS='--max-old-space-size=4096' tsx server.ts",
+    "start": "NODE_OPTIONS='--max-old-space-size=4096' tsx server.ts",
     "build": "echo 'Build complete'"
   },
   "dependencies": {

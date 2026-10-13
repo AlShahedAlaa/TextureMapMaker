@@ -14,7 +14,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const APP_NAME = "Texture Map Maker";
-const APP_VERSION = "1.1.0";
+const APP_VERSION = "1.1";
 const PORT = 3000;
 const HOST = "0.0.0.0";
 
@@ -37,9 +37,10 @@ declare module "express-session" {
 }
 
 const app = express();
+app.set("trust proxy", 1);
 
-app.use(express.json({ limit: "80mb" }));
-app.use(express.urlencoded({ extended: true, limit: "80mb" }));
+app.use(express.json({ limit: "200mb" }));
+app.use(express.urlencoded({ extended: true, limit: "200mb" }));
 app.use(cookieParser());
 app.use(
   session({
@@ -54,11 +55,16 @@ app.use(
 app.use("/static", express.static(path.join(__dirname, "static")));
 
 function getSessionDir(req: Request): { sid: string; dir: string } {
-  let sid = req.session.sid;
-  if (!sid) {
-    sid = uuidv4().replace(/-/g, "").slice(0, 12);
-    req.session.sid = sid;
+  let sid =
+    (req.headers["x-session-id"] as string) ||
+    (req.query?.sid as string) ||
+    (req.body?.sid as string) ||
+    req.session.sid;
+
+  if (!sid || typeof sid !== "string" || !/^[a-zA-Z0-9_-]{4,64}$/.test(sid)) {
+    sid = req.session.sid || uuidv4().replace(/-/g, "").slice(0, 12);
   }
+  req.session.sid = sid;
   const dir = path.join(OUTPUTS_DIR, sid);
   return { sid, dir };
 }
@@ -76,7 +82,7 @@ const upload = multer({
       cb(null, `upload${ext}`);
     },
   }),
-  limits: { fileSize: 80 * 1024 * 1024 },
+  limits: { fileSize: 200 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
     if (!ALLOWED_EXTS.has(ext)) {
@@ -154,6 +160,13 @@ app.get("/health", (_req: Request, res: Response) => {
   });
 });
 
+app.use("/api", (req: Request, res: Response, next) => {
+  if (!req.path.includes("download-zip")) {
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+  }
+  next();
+});
+
 app.post("/api/generate", upload.single("diffuse"), async (req: Request, res: Response) => {
   try {
     const { sid, dir: outDir } = getSessionDir(req);
@@ -205,10 +218,11 @@ app.post("/api/generate", upload.single("diffuse"), async (req: Request, res: Re
 
     res.json({
       ok: true,
+      sid,
       maps,
       previews,
       uploaded,
-      download_zip: "/api/download-zip",
+      download_zip: `/api/download-zip?sid=${sid}`,
     });
   } catch (err: any) {
     console.error("Generate error:", err);
@@ -382,6 +396,17 @@ const handleInbox = async (req: Request, res: Response) => {
 
 app.post("/api/import-inbox", handleInbox);
 app.get("/api/import-inbox", handleInbox);
+
+app.use((err: any, _req: Request, res: Response, _next: any) => {
+  console.error("Global server error:", err);
+  if (err && err.code === "LIMIT_FILE_SIZE") {
+    return res.status(413).json({ error: "Image file is too large (max 30MB)" });
+  }
+  if (err && typeof err.message === "string") {
+    return res.status(500).json({ error: err.message });
+  }
+  res.status(500).json({ error: "Internal server error during map generation" });
+});
 
 app.listen(PORT, HOST, () => {
   console.log(`Texture Map Maker running at http://${HOST}:${PORT}`);

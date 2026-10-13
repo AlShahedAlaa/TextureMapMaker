@@ -7,8 +7,8 @@
   <meta name="description" content="Free offline PBR texture map generator: diffuse to normal, height, roughness, and AO maps with live 3D preview and ZIP export." />
   <meta property="og:title" content="Texture Map Maker" />
   <meta property="og:description" content="Free offline PBR texture map generator: diffuse to normal, height, roughness, and AO maps with live 3D preview and ZIP export." />
-  <link rel="stylesheet" href="/static/style.css?v=9" />
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2310b981'/%3E%3Ctext x='32' y='42' text-anchor='middle' font-size='18' fill='white'%3EPBR%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="/static/style.css?v=11" />
+  <link rel="icon" type="image/svg+xml" href="/static/logo.svg" />
   <script type="importmap">
   {
     "imports": {
@@ -20,17 +20,28 @@
 </head>
 <body>
   <div class="app">
-    <header>
+    <header class="app-header">
       <div class="brand">
-        <div class="logo">PBR</div>
+        <div class="logo">
+          <img src="/static/logo.svg" alt="Texture Map Maker Logo" width="38" height="38" />
+        </div>
         <div>
-          <h1>Texture Map Maker <span class="version">v{{ version }}</span></h1>
-          <p class="subtitle">Diffuse → PBR maps & ORM → Live 3D shader ball preview</p>
+          <div class="title-row">
+            <h1>Texture Map Maker</h1>
+            <span class="version-tag">v{{ version }}</span>
+          </div>
+          <p class="subtitle">Diffuse &rarr; PBR Maps &amp; Packed ORM &rarr; Live 3D Material Studio</p>
         </div>
       </div>
       <div class="header-actions">
+        <button type="button" id="aboutBtn" class="btn-about" title="About Texture Map Maker and Developer">
+          <svg class="about-icon" viewBox="0 0 20 20" fill="currentColor" width="15" height="15">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+          </svg>
+          About
+        </button>
         <div class="naming-preset-wrap">
-          <label for="namingPreset" class="preset-label">Naming Preset</label>
+          <label for="namingPreset" class="preset-label">Preset</label>
           <select id="namingPreset" class="preset-select" title="File naming convention for downloaded ZIP">
             <option value="standard" selected>Standard (diffuse / normal / orm)</option>
             <option value="unreal">Unreal Engine (_BaseColor / _Normal / _ORM)</option>
@@ -38,21 +49,29 @@
             <option value="blender">Blender (_diffuse / _nor / _rough)</option>
           </select>
         </div>
-        <a id="downloadBtn" class="btn-download disabled" href="/api/download-zip?preset=standard">Download all (ZIP)</a>
+        <button type="button" id="downloadBtn" class="btn-download disabled" title="Download all maps in a ZIP archive">
+          <svg class="dl-icon" viewBox="0 0 20 20" fill="currentColor" width="15" height="15">
+            <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+          </svg>
+          Download all (ZIP)
+        </button>
       </div>
     </header>
 
     <div class="workspace">
       <aside class="sidebar">
+        <!-- Source Texture Card -->
         <section class="card">
-          <h2>Source</h2>
+          <div class="card-head-simple">
+            <h2>Source Texture</h2>
+          </div>
           <div id="dropzone" class="dropzone">
             <div id="dropHint">
-              <div class="drop-icon">⬆</div>
-              <strong>Drop diffuse</strong>
-              <span>PNG / JPG / WEBP</span>
+              <div class="drop-icon">&uarr;</div>
+              <strong>Choose or drop diffuse</strong>
+              <span>PNG, JPG, WEBP, TIFF</span>
             </div>
-            <img id="diffuseThumb" alt="Diffuse" hidden />
+            <img id="diffuseThumb" alt="Diffuse thumbnail" hidden />
           </div>
           <input id="fileInput" type="file" accept="image/*" hidden />
 
@@ -60,36 +79,39 @@
             <label class="field">
               Max resolution
               <select id="maxSize">
-                <option value="1024">1024</option>
-                <option value="2048" selected>2048</option>
-                <option value="4096">4096</option>
+                <option value="1024">1024 px (1K)</option>
+                <option value="2048" selected>2048 px (2K)</option>
+                <option value="4096">4096 px (4K UHD)</option>
+                <option value="8192">8192 px (8K Ultra HD)</option>
               </select>
             </label>
             <label class="field">
               Aspect Ratio
               <select id="aspectMode" title="Handling for non-square textures">
-                <option value="keep" selected>Keep Ratio (Native)</option>
-                <option value="crop">Crop to 1:1 Square</option>
+                <option value="keep" selected>Keep (Native)</option>
+                <option value="crop">Crop 1:1 Square</option>
                 <option value="pad">Pad to Square</option>
-                <option value="stretch">Stretch to 1:1</option>
+                <option value="stretch">Stretch 1:1</option>
               </select>
             </label>
           </div>
 
           <label class="slider" title="Multi-scale high-pass filter that removes baked directional shadows & ambient lighting">
-            Delighting <input type="range" id="delight" min="0" max="1" step="0.05" value="0" /><span class="val">0</span>
+            <span class="lbl">Delighting</span>
+            <input type="range" id="delight" min="0" max="1" step="0.05" value="0" />
+            <span class="val">0</span>
           </label>
-          <p class="hint">Delighting removes baked directional shadows before map generation.</p>
+          <p class="hint">Removes baked shadows and highlights before computing maps.</p>
 
-          <button id="generateBtn" class="btn-primary" disabled type="button">Regenerate</button>
           <div id="status" class="status"></div>
           <div id="errorBox" class="error"></div>
         </section>
 
+        <!-- Seamless Tiling Card -->
         <section class="card seamless-card">
           <div class="card-head">
             <h2>Seamless Tiling</h2>
-            <label class="switch" title="Make the texture tile without visible seams">
+            <label class="switch" title="Make texture tile smoothly without visible boundary cuts">
               <input type="checkbox" id="seamless" />
               <span class="switch-track"><span class="switch-thumb"></span></span>
             </label>
@@ -97,20 +119,31 @@
           <div id="seamlessBody" class="seamless-body is-off">
             <div class="seg" id="seamlessMethod" role="radiogroup" aria-label="Seamless method">
               <button type="button" class="seg-btn active" data-method="smart" title="Finds the least visible cut path — keeps detail sharp">Smart cut</button>
-              <button type="button" class="seg-btn" data-method="blend" title="Soft cross-fade — good for noisy / organic textures">Soft blend</button>
+              <button type="button" class="seg-btn" data-method="blend" title="Soft cross-fade — good for noisy or organic textures">Soft blend</button>
               <button type="button" class="seg-btn" data-method="mirror" title="Mirror tiling — always seamless, shows symmetry">Mirror</button>
             </div>
-            <label class="slider">Edge zone <input type="range" id="seamless_blend" min="0.08" max="0.45" step="0.01" value="0.25" /><span class="val">0.25</span></label>
-            <label class="slider">Even light <input type="range" id="seamless_equalize" min="0" max="1" step="0.05" value="0.4" /><span class="val">0.4</span></label>
-            <p class="hint" id="seamHint">Smart cut: best for stone, brick, wood, fabric. Even light removes gradients that make repeats obvious. Use the <strong>2×2 / 3×3</strong> preview to check the tiling.</p>
+            <label class="slider">
+              <span class="lbl">Edge zone</span>
+              <input type="range" id="seamless_blend" min="0.08" max="0.45" step="0.01" value="0.25" />
+              <span class="val">0.25</span>
+            </label>
+            <label class="slider">
+              <span class="lbl">Even light</span>
+              <input type="range" id="seamless_equalize" min="0" max="1" step="0.05" value="0.4" />
+              <span class="val">0.4</span>
+            </label>
+            <p class="hint" id="seamHint">Smart cut: best for brick, wood, stone, fabric. Use 2&times;2 / 3&times;3 to check repeat.</p>
           </div>
         </section>
 
+        <!-- Spec Tuning Card -->
         <section class="card specs-card">
-          <h2 id="specsTitle">Normal map settings</h2>
+          <div class="card-head-simple">
+            <h2 id="specsTitle">Normal map settings</h2>
+          </div>
 
           <div class="spec-panel" data-panel="diffuse" hidden>
-            <p class="hint">Source color texture. Switch tabs to edit maps, or open <strong>3D view</strong> to see the full material.</p>
+            <p class="hint">Source diffuse albedo texture. Switch tabs to adjust specific map generators, or open <strong>3D view</strong> to inspect the rendered material.</p>
           </div>
 
           <div class="spec-panel" data-panel="normal">
@@ -118,21 +151,49 @@
               <button type="button" class="seg-btn active" data-format="opengl" title="OpenGL: Blender, Unity, WebGL (+Y green up)">OpenGL (+Y)</button>
               <button type="button" class="seg-btn" data-format="directx" title="DirectX: Unreal Engine, 3ds Max (-Y green down)">DirectX (-Y)</button>
             </div>
-            <label class="slider">Strength <input type="range" id="normal_strength" min="0.2" max="8" step="0.1" value="2" /><span class="val">2</span></label>
-            <label class="slider">Macro detail <input type="range" id="normal_macro_detail" min="0" max="1" step="0.05" value="0.35" /><span class="val">0.35</span></label>
-            <label class="slider">Blur <input type="range" id="normal_blur" min="0" max="4" step="0.1" value="0" /><span class="val">0</span></label>
-            <label class="check"><input type="checkbox" id="normal_invert_x" /> Invert X (+X / -X)</label>
+            <label class="slider">
+              <span class="lbl">Strength</span>
+              <input type="range" id="normal_strength" min="0.2" max="8" step="0.1" value="2" />
+              <span class="val">2</span>
+            </label>
+            <label class="slider">
+              <span class="lbl">Macro detail</span>
+              <input type="range" id="normal_macro_detail" min="0" max="1" step="0.05" value="0.35" />
+              <span class="val">0.35</span>
+            </label>
+            <label class="slider">
+              <span class="lbl">Blur</span>
+              <input type="range" id="normal_blur" min="0" max="4" step="0.1" value="0" />
+              <span class="val">0</span>
+            </label>
+            <label class="check"><input type="checkbox" id="normal_invert_x" /> Invert X (+X / &minus;X)</label>
             <label class="check"><input type="checkbox" id="normal_invert_y" checked /> Green Flip (Invert Y)</label>
-            <p class="hint">OpenGL / Blender / Unity: +Y · Unreal Engine (DirectX): -Y</p>
+            <p class="hint">Blender &amp; Unity default to OpenGL (+Y). Unreal Engine uses DirectX (&minus;Y).</p>
           </div>
 
           <div class="spec-panel" data-panel="height" hidden>
-            <label class="slider">Strength <input type="range" id="height_strength" min="0.1" max="3" step="0.05" value="1" /><span class="val">1</span></label>
-            <label class="slider">Blur <input type="range" id="height_blur" min="0" max="8" step="0.1" value="0.5" /><span class="val">0.5</span></label>
-            <label class="slider">Contrast <input type="range" id="height_contrast" min="0.2" max="3" step="0.05" value="1" /><span class="val">1</span></label>
-            <label class="slider">Mid-level <input type="range" id="height_level" min="-0.4" max="0.4" step="0.02" value="0" /><span class="val">0</span></label>
+            <label class="slider">
+              <span class="lbl">Strength</span>
+              <input type="range" id="height_strength" min="0.1" max="3" step="0.05" value="1" />
+              <span class="val">1</span>
+            </label>
+            <label class="slider">
+              <span class="lbl">Blur</span>
+              <input type="range" id="height_blur" min="0" max="8" step="0.1" value="0.5" />
+              <span class="val">0.5</span>
+            </label>
+            <label class="slider">
+              <span class="lbl">Contrast</span>
+              <input type="range" id="height_contrast" min="0.2" max="3" step="0.05" value="1" />
+              <span class="val">1</span>
+            </label>
+            <label class="slider">
+              <span class="lbl">Mid-level</span>
+              <input type="range" id="height_level" min="-0.4" max="0.4" step="0.02" value="0" />
+              <span class="val">0</span>
+            </label>
             <label class="check"><input type="checkbox" id="height_invert" /> Invert displacement</label>
-            <p class="hint">White = peaks / extrusions · Black = depressions. Mid-level centers baseline.</p>
+            <p class="hint">White = peaks &amp; extrusions &middot; Black = depressions. Mid-level centers baseline.</p>
           </div>
 
           <div class="spec-panel" data-panel="roughness" hidden>
@@ -143,47 +204,101 @@
             <label class="field">Method
               <select id="roughness_method">
                 <option value="variance" selected>Local detail (variance)</option>
-                <option value="edges">Edges</option>
+                <option value="edges">Edge density</option>
                 <option value="luminance">Luminance</option>
               </select>
             </label>
-            <label class="slider">Strength <input type="range" id="roughness_strength" min="0" max="2" step="0.05" value="1" /><span class="val">1</span></label>
-            <label class="slider">Base <input type="range" id="roughness_base" min="0" max="1" step="0.02" value="0.5" /><span class="val">0.5</span></label>
-            <label class="slider">Min clamp <input type="range" id="roughness_min" min="0" max="1" step="0.02" value="0" /><span class="val">0</span></label>
-            <label class="slider">Max clamp <input type="range" id="roughness_max" min="0" max="1" step="0.02" value="1" /><span class="val">1</span></label>
-            <label class="slider">Blur <input type="range" id="roughness_blur" min="0" max="10" step="0.1" value="1.5" /><span class="val">1.5</span></label>
-            <label class="slider">Contrast <input type="range" id="roughness_contrast" min="0.2" max="3" step="0.05" value="1" /><span class="val">1</span></label>
+            <label class="slider">
+              <span class="lbl">Strength</span>
+              <input type="range" id="roughness_strength" min="0" max="2" step="0.05" value="1" />
+              <span class="val">1</span>
+            </label>
+            <label class="slider">
+              <span class="lbl">Base</span>
+              <input type="range" id="roughness_base" min="0" max="1" step="0.02" value="0.5" />
+              <span class="val">0.5</span>
+            </label>
+            <label class="slider">
+              <span class="lbl">Min clamp</span>
+              <input type="range" id="roughness_min" min="0" max="1" step="0.02" value="0" />
+              <span class="val">0</span>
+            </label>
+            <label class="slider">
+              <span class="lbl">Max clamp</span>
+              <input type="range" id="roughness_max" min="0" max="1" step="0.02" value="1" />
+              <span class="val">1</span>
+            </label>
+            <label class="slider">
+              <span class="lbl">Blur</span>
+              <input type="range" id="roughness_blur" min="0" max="10" step="0.1" value="1.5" />
+              <span class="val">1.5</span>
+            </label>
+            <label class="slider">
+              <span class="lbl">Contrast</span>
+              <input type="range" id="roughness_contrast" min="0.2" max="3" step="0.05" value="1" />
+              <span class="val">1</span>
+            </label>
             <label class="check"><input type="checkbox" id="roughness_invert" /> Invert (smoothness)</label>
-            <p class="hint">White = rough/matte · Black = smooth/mirror</p>
+            <p class="hint">White = rough / matte &middot; Black = smooth / specular mirror.</p>
           </div>
 
           <div class="spec-panel" data-panel="ao" hidden>
             <label class="check"><input type="checkbox" id="include_ao" checked /> Include AO map</label>
-            <label class="slider">Strength <input type="range" id="ao_strength" min="0.2" max="3" step="0.05" value="1" /><span class="val">1</span></label>
-            <label class="slider">Radius / Blur <input type="range" id="ao_blur" min="0.5" max="14" step="0.5" value="2.5" /><span class="val">2.5</span></label>
-            <label class="slider">Cavity dark <input type="range" id="ao_exponent" min="1.0" max="2.8" step="0.1" value="1.2" /><span class="val">1.2</span></label>
-            <p class="hint">Ambient occlusion darkens cracks and crevices where indirect light cannot reach.</p>
+            <label class="slider">
+              <span class="lbl">Strength</span>
+              <input type="range" id="ao_strength" min="0.2" max="3" step="0.05" value="1" />
+              <span class="val">1</span>
+            </label>
+            <label class="slider">
+              <span class="lbl">Radius / Blur</span>
+              <input type="range" id="ao_blur" min="0.5" max="14" step="0.5" value="2.5" />
+              <span class="val">2.5</span>
+            </label>
+            <label class="slider">
+              <span class="lbl">Cavity dark</span>
+              <input type="range" id="ao_exponent" min="1.0" max="2.8" step="0.1" value="1.2" />
+              <span class="val">1.2</span>
+            </label>
+            <p class="hint">Darkens cracks, crevices, and contact points where indirect light cannot reach.</p>
           </div>
 
           <div class="spec-panel" data-panel="orm" hidden>
-            <p class="hint">Packed texture for Unreal Engine & glTF pipelines:</p>
-            <ul class="channel-list">
-              <li><strong style="color: #f87171;">R:</strong> Ambient Occlusion (AO)</li>
-              <li><strong style="color: #4ade80;">G:</strong> Roughness</li>
-              <li><strong style="color: #60a5fa;">B:</strong> Metallic (or Height)</li>
-            </ul>
+            <p class="hint">Single packed texture file for Unreal Engine &amp; glTF 2.0 pipelines:</p>
+            <div class="channel-grid">
+              <div class="channel-item ch-r">
+                <span class="ch-badge">R</span>
+                <div>
+                  <strong>Ambient Occlusion</strong>
+                  <span>Occlusion cavities</span>
+                </div>
+              </div>
+              <div class="channel-item ch-g">
+                <span class="ch-badge">G</span>
+                <div>
+                  <strong>Roughness</strong>
+                  <span>Microfacet scatter</span>
+                </div>
+              </div>
+              <div class="channel-item ch-b">
+                <span class="ch-badge">B</span>
+                <div>
+                  <strong>Metallic / Height</strong>
+                  <span>Metalness or displacement</span>
+                </div>
+              </div>
+            </div>
             <label class="field">
-              Blue channel
+              Blue channel mapping
               <select id="orm_pack_blue">
-                <option value="metallic" selected>Metallic (0.0 Dielectric)</option>
+                <option value="metallic" selected>Metallic (0.0 Dielectric standard)</option>
                 <option value="height">Height / Displacement</option>
               </select>
             </label>
-            <p class="hint">Saves draw calls and GPU memory in modern game engines.</p>
+            <p class="hint">Saves GPU sampler slots and draw call overhead in real-time engines.</p>
           </div>
 
           <div class="spec-panel" data-panel="view3d" hidden>
-            <p class="hint">Full PBR material on 3D meshes. Drag to orbit · scroll to zoom.</p>
+            <p class="hint">Full PBR material viewport. Drag to orbit &middot; scroll to zoom.</p>
             <div class="shape-row">
               <span class="shape-label">Mesh</span>
               <div class="shape-btns" id="shapeBtns">
@@ -208,17 +323,37 @@
             <div class="shape-row">
               <span class="shape-label">Tiling</span>
               <div class="shape-btns" id="tilingPresetBtns">
-                <button type="button" class="shape-btn active" data-repeat="1">1×</button>
-                <button type="button" class="shape-btn" data-repeat="2">2×</button>
-                <button type="button" class="shape-btn" data-repeat="4">4×</button>
-                <button type="button" class="shape-btn" data-repeat="8">8×</button>
+                <button type="button" class="shape-btn active" data-repeat="1">1&times;</button>
+                <button type="button" class="shape-btn" data-repeat="2">2&times;</button>
+                <button type="button" class="shape-btn" data-repeat="4">4&times;</button>
+                <button type="button" class="shape-btn" data-repeat="8">8&times;</button>
               </div>
             </div>
-            <label class="slider">UV Repeat <input type="range" id="view_repeat" min="1" max="8" step="1" value="1" /><span class="val">1</span></label>
-            <label class="slider">Normal scale <input type="range" id="view_normal_scale" min="0" max="3" step="0.05" value="1" /><span class="val">1</span></label>
-            <label class="slider">Displacement <input type="range" id="view_disp_scale" min="0" max="0.15" step="0.005" value="0.02" /><span class="val">0.02</span></label>
-            <label class="slider">Metalness <input type="range" id="view_metalness" min="0" max="1" step="0.05" value="0" /><span class="val">0</span></label>
-            <label class="slider">Env light <input type="range" id="view_light" min="0.3" max="2.5" step="0.05" value="1.1" /><span class="val">1.1</span></label>
+            <label class="slider">
+              <span class="lbl">UV Repeat</span>
+              <input type="range" id="view_repeat" min="1" max="8" step="1" value="1" />
+              <span class="val">1</span>
+            </label>
+            <label class="slider">
+              <span class="lbl">Normal scale</span>
+              <input type="range" id="view_normal_scale" min="0" max="3" step="0.05" value="1" />
+              <span class="val">1</span>
+            </label>
+            <label class="slider">
+              <span class="lbl">Displacement</span>
+              <input type="range" id="view_disp_scale" min="0" max="0.15" step="0.005" value="0.02" />
+              <span class="val">0.02</span>
+            </label>
+            <label class="slider">
+              <span class="lbl">Metalness</span>
+              <input type="range" id="view_metalness" min="0" max="1" step="0.05" value="0" />
+              <span class="val">0</span>
+            </label>
+            <label class="slider">
+              <span class="lbl">Env light</span>
+              <input type="range" id="view_light" min="0.3" max="2.5" step="0.05" value="1.1" />
+              <span class="val">1.1</span>
+            </label>
             <label class="check"><input type="checkbox" id="view_auto_rotate" /> Auto-rotate</label>
           </div>
         </section>
@@ -232,18 +367,51 @@
           <button type="button" class="tab" data-tab="roughness" role="tab">Roughness</button>
           <button type="button" class="tab" data-tab="ao" role="tab">AO</button>
           <button type="button" class="tab" data-tab="orm" role="tab">Packed ORM</button>
-          <button type="button" class="tab tab-3d" data-tab="view3d" role="tab">3D View</button>
+          <button type="button" class="tab tab-3d" data-tab="view3d" role="tab">
+            <svg class="tab-3d-icon" viewBox="0 0 20 20" fill="currentColor" width="13" height="13">
+              <path d="M10 2l7.5 4.3v7.4L10 18l-7.5-4.3V6.3L10 2zm0 2.3L4.5 7.4 10 10.6l5.5-3.2L10 4.3z" />
+            </svg>
+            3D View
+          </button>
         </div>
 
         <div class="viewer-stage" id="viewerStage2d">
           <div class="viewer-square" id="viewerSquare">
             <div id="viewerEmpty" class="viewer-empty">
-              Upload a diffuse texture to preview maps here
+              <div class="empty-icon">&uarr;</div>
+              <p>Upload a diffuse texture on the left to preview maps here</p>
             </div>
             <img id="mainPreview" alt="Map preview" hidden />
             <div id="tiledPreview" class="tiled-preview" hidden></div>
             <div id="seamGridOverlay" class="seam-grid-overlay" hidden></div>
-            <div id="liveBadge" class="live-badge" hidden>LIVE</div>
+
+            <!-- Dual-layer Split Wipe Container -->
+            <div id="wipeContainer" class="wipe-container" hidden>
+              <!-- Bottom layer: Generated Map -->
+              <div class="wipe-layer wipe-layer-bottom" id="wipeLayerBottom">
+                <img id="wipeBottomImg" alt="Generated map" />
+              </div>
+
+              <!-- Top layer: Source Diffuse, clipped dynamically via container width -->
+              <div class="wipe-layer wipe-layer-top" id="wipeLayerTop" style="width: 50%;">
+                <img id="wipeTopImg" alt="Diffuse map" />
+              </div>
+
+              <!-- Vertical dividing line with centered draggable handle -->
+              <div class="wipe-divider" id="wipeDivider" style="left: 50%;" tabindex="0" role="slider" aria-label="Wipe comparison divider" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50">
+                <div class="wipe-handle" title="Drag to compare maps">
+                  <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor">
+                    <path d="M5.5 3.5L1 8l4.5 4.5V9.5h5v3L15 8l-4.5-4.5v3h-5v-3z" />
+                  </svg>
+                </div>
+              </div>
+
+              <!-- Corner badges on either side of the split line -->
+              <div class="wipe-badge wipe-badge-left" id="wipeLeftBadge">Diffuse</div>
+              <div class="wipe-badge wipe-badge-right" id="wipeRightBadge">Normal</div>
+            </div>
+
+            <div id="liveBadge" class="live-badge" hidden>LIVE PREVIEW</div>
           </div>
         </div>
 
@@ -259,27 +427,37 @@
                 <button type="button" class="vp-btn" data-shape="shaderball">Shader Ball</button>
               </div>
               <div class="vp-toolbar-group" id="vpTilingGroup" title="UV Repeat Scale">
-                <button type="button" class="vp-btn active" data-repeat="1">1×</button>
-                <button type="button" class="vp-btn" data-repeat="2">2×</button>
-                <button type="button" class="vp-btn" data-repeat="4">4×</button>
+                <button type="button" class="vp-btn active" data-repeat="1">1&times;</button>
+                <button type="button" class="vp-btn" data-repeat="2">2&times;</button>
+                <button type="button" class="vp-btn" data-repeat="4">4&times;</button>
               </div>
             </div>
             <canvas id="view3dCanvas"></canvas>
             <div id="view3dEmpty" class="viewer-empty">
-              Generate maps first, then open 3D view
+              <div class="empty-icon">&#9646;</div>
+              <p>Upload or generate maps first, then open 3D view</p>
             </div>
           </div>
         </div>
 
         <div class="viewer-footer">
-          <span id="viewerLabel">Normal map</span>
+          <div class="footer-left">
+            <span id="viewerLabel">Normal map</span>
+          </div>
           <div class="footer-right">
+            <button type="button" id="wipeToggleBtn" class="btn-tool active" title="Compare against source Diffuse with vertical wipe slider" hidden>
+              <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;">
+                <rect x="2" y="2" width="12" height="12" rx="2" />
+                <line x1="8" y1="2" x2="8" y2="14" />
+              </svg>
+              Split Wipe
+            </button>
             <button type="button" id="seamGridToggle" class="btn-tool" title="Show tile seam boundary lines" hidden>Grid lines</button>
             <div class="seg seg-small" id="tileBtns" role="radiogroup" aria-label="Tile preview">
-              <button type="button" class="seg-btn active" data-tile="1">1×1</button>
-              <button type="button" class="seg-btn" data-tile="2">2×2</button>
-              <button type="button" class="seg-btn" data-tile="3">3×3</button>
-              <button type="button" class="seg-btn" data-tile="4">4×4</button>
+              <button type="button" class="seg-btn active" data-tile="1">1&times;1</button>
+              <button type="button" class="seg-btn" data-tile="2">2&times;2</button>
+              <button type="button" class="seg-btn" data-tile="3">3&times;3</button>
+              <button type="button" class="seg-btn" data-tile="4">4&times;4</button>
             </div>
             <a id="saveCurrentBtn" class="btn-save disabled" href="#" download="normal.png">Save this map</a>
           </div>
@@ -287,11 +465,92 @@
       </main>
     </div>
 
-    <p class="footer-note">
-      Tune PBR maps, then use <strong>3D view</strong> to inspect with Quad Sphere, Shader Ball, Plane, or Cylinder.
-      Channel packing (ORM) ready for Unreal Engine, Unity, and Blender.
-    </p>
+    <footer class="app-footer">
+      <div class="footer-meta">
+        <span>Texture Map Maker &middot; Free Offline PBR Generator</span>
+        <span>Version 1.1</span>
+      </div>
+      <div class="footer-links">
+        <span>Developer: <strong>Alaa Alshahed</strong></span>
+        <a href="https://www.alaaalshahed.com" target="_blank" rel="noopener noreferrer">www.alaaalshahed.com</a>
+        <button type="button" id="footerAboutBtn" class="footer-about-link">About</button>
+      </div>
+    </footer>
   </div>
-  <script type="module" src="/static/app.js?v=9"></script>
+
+  <!-- Modern About Modal Dialog -->
+  <div id="aboutModal" class="modal-backdrop" hidden>
+    <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="aboutTitle">
+      <div class="modal-header">
+        <div class="modal-brand">
+          <div class="logo modal-logo">
+            <img src="/static/logo.svg" alt="Texture Map Maker Logo" width="34" height="34" />
+          </div>
+          <div>
+            <h2 id="aboutTitle" class="modal-title">Texture Map Maker</h2>
+            <div class="modal-version-badge">Version 1.1</div>
+          </div>
+        </div>
+        <button type="button" id="closeAboutBtn" class="modal-close" aria-label="Close dialog">&times;</button>
+      </div>
+      
+      <div class="modal-body">
+        <p class="modal-desc">
+          Texture Map Maker is a professional, high-performance PBR texture generator.
+          Turn any single diffuse image into seamless Normal, Height, Roughness, Ambient Occlusion, and Packed ORM texture maps with real-time 3D Shader Ball preview.
+        </p>
+
+        <div class="about-card">
+          <div class="about-row">
+            <span class="about-label">Developer</span>
+            <span class="about-val developer-name">Alaa Alshahed</span>
+          </div>
+          <div class="about-row">
+            <span class="about-label">Website</span>
+            <a class="about-link" href="https://www.alaaalshahed.com" target="_blank" rel="noopener noreferrer">
+              www.alaaalshahed.com
+              <svg class="external-icon" viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M6 3h7v7M13 3L6 10" />
+              </svg>
+            </a>
+          </div>
+          <div class="about-row">
+            <span class="about-label">Application</span>
+            <span class="about-val">Texture Map Maker</span>
+          </div>
+          <div class="about-row">
+            <span class="about-label">Release</span>
+            <span class="about-val">Version 1.1</span>
+          </div>
+        </div>
+
+        <div class="about-features">
+          <div class="about-feat">
+            <div class="feat-dot"></div>
+            <div>
+              <strong>Pinch-Free 3D Viewport</strong>
+              <span>Quad-Sphere (subdivided box), authentic Shader Ball, Cylinder, Cube, and Plane.</span>
+            </div>
+          </div>
+          <div class="about-feat">
+            <div class="feat-dot"></div>
+            <div>
+              <strong>Game Engine &amp; DCC Presets</strong>
+              <span>DirectX &amp; OpenGL normal orientations, plus ORM channel packing for Unreal, Unity, and Blender.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <a class="btn-primary-link" href="https://www.alaaalshahed.com" target="_blank" rel="noopener noreferrer">
+          Visit www.alaaalshahed.com
+        </a>
+        <button type="button" id="dismissAboutBtn" class="btn-modal-dismiss">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/static/app.js?v=10"></script>
 </body>
 </html>

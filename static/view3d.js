@@ -43,17 +43,17 @@ export class MaterialViewer3D {
     this.controls.autoRotateSpeed = 1.2;
 
     // Lights
-    this.amb = new THREE.AmbientLight(0xffffff, 0.5);
-    this.key = new THREE.DirectionalLight(0xffffff, 1.2);
+    this.amb = new THREE.AmbientLight(0xffffff, 0.7);
+    this.key = new THREE.DirectionalLight(0xffffff, 1.4);
     this.key.position.set(2.5, 3.5, 2.0);
-    this.fill = new THREE.DirectionalLight(0xa7f3d0, 0.4);
+    this.fill = new THREE.DirectionalLight(0xa5b4fc, 0.5);
     this.fill.position.set(-2.0, 1.0, -1.5);
-    this.rim = new THREE.DirectionalLight(0x38bdf8, 0.35);
+    this.rim = new THREE.DirectionalLight(0x38bdf8, 0.4);
     this.rim.position.set(0.0, -2.0, -2.5);
     this.scene.add(this.amb, this.key, this.fill, this.rim);
 
-    // Soft ground grid
-    const grid = new THREE.GridHelper(4, 16, 0x1a3d2e, 0x12241c);
+    // Soft ground grid (neutral dark studio)
+    const grid = new THREE.GridHelper(4, 16, 0x27272a, 0x18181b);
     grid.position.y = -0.68;
     this.scene.add(grid);
 
@@ -260,53 +260,53 @@ export class MaterialViewer3D {
     this.lightPreset = preset;
     if (preset === "warm") {
       // Exterior Warm: golden sun + soft blue ambient
-      this.scene.background = new THREE.Color(0x11161a);
+      this.scene.background = new THREE.Color(0x121316);
       this.amb.color.setHex(0xbfe0f7);
-      this.amb.intensity = 0.5;
+      this.amb.intensity = 0.6;
       this.key.color.setHex(0xfef08a);
-      this.key.intensity = 1.6;
+      this.key.intensity = 1.7;
       this.key.position.set(3.0, 4.0, 2.0);
       this.fill.color.setHex(0xfed7aa);
-      this.fill.intensity = 0.4;
+      this.fill.intensity = 0.45;
       this.rim.color.setHex(0x93c5fd);
       this.rim.intensity = 0.5;
     } else if (preset === "overcast") {
       // Overcast: diffused ambient, soft shadowless lighting
-      this.scene.background = new THREE.Color(0x131a17);
+      this.scene.background = new THREE.Color(0x121316);
       this.amb.color.setHex(0xf1f5f9);
-      this.amb.intensity = 0.85;
+      this.amb.intensity = 0.95;
       this.key.color.setHex(0xe2e8f0);
-      this.key.intensity = 0.7;
+      this.key.intensity = 0.8;
       this.key.position.set(0.5, 5.0, 0.5);
       this.fill.color.setHex(0xcbd5e1);
-      this.fill.intensity = 0.3;
+      this.fill.intensity = 0.4;
       this.rim.color.setHex(0x94a3b8);
-      this.rim.intensity = 0.2;
+      this.rim.intensity = 0.25;
     } else if (preset === "dramatic") {
       // Dramatic Rim / Grazing: sharp low-angle light highlights displacement & normal maps
-      this.scene.background = new THREE.Color(0x060907);
-      this.amb.color.setHex(0x334155);
-      this.amb.intensity = 0.25;
+      this.scene.background = new THREE.Color(0x0a0b0e);
+      this.amb.color.setHex(0x475569);
+      this.amb.intensity = 0.35;
       this.key.color.setHex(0xffffff);
-      this.key.intensity = 1.9;
-      this.key.position.set(3.5, 0.7, 1.5); // Grazing low-angle light
-      this.fill.color.setHex(0x10b981);
-      this.fill.intensity = 0.25;
+      this.key.intensity = 2.0;
+      this.key.position.set(3.5, 0.7, 1.5);
+      this.fill.color.setHex(0x6366f1);
+      this.fill.intensity = 0.3;
       this.rim.color.setHex(0x38bdf8);
-      this.rim.intensity = 1.1;
+      this.rim.intensity = 1.2;
       this.rim.position.set(-3.0, 2.0, -2.5);
     } else {
       // Studio Neutral (default)
-      this.scene.background = new THREE.Color(0x0a100c);
+      this.scene.background = new THREE.Color(0x0f1015);
       this.amb.color.setHex(0xffffff);
-      this.amb.intensity = 0.5;
+      this.amb.intensity = 0.7;
       this.key.color.setHex(0xffffff);
-      this.key.intensity = 1.2;
+      this.key.intensity = 1.4;
       this.key.position.set(2.5, 3.5, 2.0);
-      this.fill.color.setHex(0xa7f3d0);
-      this.fill.intensity = 0.4;
+      this.fill.color.setHex(0xa5b4fc);
+      this.fill.intensity = 0.45;
       this.rim.color.setHex(0x38bdf8);
-      this.rim.intensity = 0.35;
+      this.rim.intensity = 0.4;
       this.rim.position.set(0.0, -2.0, -2.5);
     }
   }
@@ -341,24 +341,33 @@ export class MaterialViewer3D {
   }
 
   async setMaps(urls) {
+    if (!urls) return;
     const loader = new THREE.TextureLoader();
     loader.setCrossOrigin("anonymous");
 
     const load = (url, { srgb = false } = {}) =>
-      new Promise((resolve, reject) => {
+      new Promise((resolve) => {
         if (!url) return resolve(null);
-        const bust = url.includes("?") ? `&v=${Date.now()}` : `?v=${Date.now()}`;
+        // CRITICAL: NEVER append query strings to blob: or data: URLs as it breaks browser resolution!
+        const cleanUrl = (url.startsWith("blob:") || url.startsWith("data:"))
+          ? url
+          : (url.includes("?") ? `${url}&v=${Date.now()}` : `${url}?v=${Date.now()}`);
+
         loader.load(
-          url + bust,
+          cleanUrl,
           (tex) => {
             tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
             tex.repeat.set(this.repeat, this.repeat);
             tex.anisotropy = Math.min(8, this.renderer.capabilities.getMaxAnisotropy?.() || 1);
             if (srgb) tex.colorSpace = THREE.SRGBColorSpace;
+            tex.needsUpdate = true;
             resolve(tex);
           },
           undefined,
-          reject
+          (err) => {
+            console.warn("Texture failed to load from:", cleanUrl, err);
+            resolve(null);
+          }
         );
       });
 
@@ -370,17 +379,18 @@ export class MaterialViewer3D {
       load(urls.ao),
     ]);
 
-    // Dispose old textures
+    // Dispose old textures safely
     Object.values(this.textures).forEach((t) => t && t.dispose());
     this.textures = { diff, norm, height, rough, ao };
 
-    this.material.map = diff;
-    this.material.normalMap = norm;
-    this.material.roughnessMap = rough;
-    this.material.roughness = 1.0;
-    this.material.aoMap = ao;
+    this.material.color.setHex(0xffffff);
+    this.material.map = diff || null;
+    this.material.normalMap = norm || null;
+    this.material.roughnessMap = rough || null;
+    this.material.roughness = rough ? 1.0 : 0.6;
+    this.material.aoMap = ao || null;
     this.material.aoMapIntensity = ao ? 1.0 : 0.0;
-    this.material.displacementMap = height;
+    this.material.displacementMap = height || null;
     this.material.needsUpdate = true;
   }
 

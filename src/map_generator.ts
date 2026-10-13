@@ -79,8 +79,8 @@ export async function loadRGB(
   maxSize: number = 2048,
   aspectMode: AspectMode = "keep"
 ): Promise<RGBImage> {
-  const metadata = await sharp(filePath).metadata();
-  let pipeline = sharp(filePath).rotate();
+  const metadata = await sharp(filePath, { limitInputPixels: 268435456 }).metadata();
+  let pipeline = sharp(filePath, { limitInputPixels: 268435456 }).rotate();
 
   let origW = metadata.width || 1024;
   let origH = metadata.height || 1024;
@@ -191,38 +191,57 @@ export function blurArray(
   const temp = new Float32Array(w * h);
   const out = new Float32Array(w * h);
 
-  // Horizontal pass
+  // Horizontal pass: optimized interior vs boundary
   for (let y = 0; y < h; y++) {
     const rOffset = y * w;
-    for (let x = 0; x < w; x++) {
+    // Left boundary
+    const leftLimit = Math.min(r, w);
+    for (let x = 0; x < leftLimit; x++) {
       let acc = 0;
       for (let k = 0; k < size; k++) {
         let sx = x + (k - r);
-        if (wrap) {
-          sx = ((sx % w) + w) % w;
-        } else {
-          sx = clamp(sx, 0, w - 1);
-        }
+        sx = wrap ? ((sx % w) + w) % w : clamp(sx, 0, w - 1);
+        acc += arr[rOffset + sx] * kernel[k];
+      }
+      temp[rOffset + x] = acc;
+    }
+    // Interior (fast contiguous pass without bounds check)
+    const rightLimit = Math.max(0, w - r);
+    for (let x = leftLimit; x < rightLimit; x++) {
+      let acc = 0;
+      for (let k = 0; k < size; k++) {
+        acc += arr[rOffset + (x + k - r)] * kernel[k];
+      }
+      temp[rOffset + x] = acc;
+    }
+    // Right boundary
+    for (let x = Math.max(leftLimit, rightLimit); x < w; x++) {
+      let acc = 0;
+      for (let k = 0; k < size; k++) {
+        let sx = x + (k - r);
+        sx = wrap ? ((sx % w) + w) % w : clamp(sx, 0, w - 1);
         acc += arr[rOffset + sx] * kernel[k];
       }
       temp[rOffset + x] = acc;
     }
   }
 
-  // Vertical pass
-  for (let x = 0; x < w; x++) {
-    for (let y = 0; y < h; y++) {
-      let acc = 0;
-      for (let k = 0; k < size; k++) {
-        let sy = y + (k - r);
-        if (wrap) {
-          sy = ((sy % h) + h) % h;
-        } else {
-          sy = clamp(sy, 0, h - 1);
-        }
-        acc += temp[sy * w + x] * kernel[k];
+  // Vertical pass: row-by-row accumulation for cache-locality and vectorization
+  for (let y = 0; y < h; y++) {
+    const dstOffset = y * w;
+    for (let k = 0; k < size; k++) {
+      let sy = y + (k - r);
+      if (wrap) {
+        sy = ((sy % h) + h) % h;
+      } else {
+        if (sy < 0) sy = 0;
+        else if (sy >= h) sy = h - 1;
       }
-      out[y * w + x] = acc;
+      const kw = kernel[k];
+      const srcOffset = sy * w;
+      for (let x = 0; x < w; x++) {
+        out[dstOffset + x] += temp[srcOffset + x] * kw;
+      }
     }
   }
 
@@ -300,32 +319,33 @@ function computeSobel(
 
   for (let y = 0; y < h; y++) {
     const rOffset = y * w;
-    for (let x = 0; x < w; x++) {
+    const yPlus = wrap ? (y + 1) % h : Math.min(h - 1, y + 1);
+    const yMinus = wrap ? (y - 1 + h) % h : Math.max(0, y - 1);
+    const yPlusOffset = yPlus * w;
+    const yMinusOffset = yMinus * w;
+
+    // Interior points (fast, 99.8% of pixels)
+    for (let x = 1; x < w - 1; x++) {
+      dx[rOffset + x] = (data[rOffset + x + 1] - data[rOffset + x - 1]) * 0.5;
+      dy[rOffset + x] = (data[yPlusOffset + x] - data[yMinusOffset + x]) * 0.5;
+    }
+
+    // Left border (x = 0)
+    if (wrap) {
+      dx[rOffset] = (data[rOffset + 1] - data[rOffset + w - 1]) * 0.5;
+    } else {
+      dx[rOffset] = data[rOffset + 1] - data[rOffset];
+    }
+    dy[rOffset] = (data[yPlusOffset] - data[yMinusOffset]) * 0.5;
+
+    // Right border (x = w - 1)
+    if (w > 1) {
       if (wrap) {
-        const xPlus = (x + 1) % w;
-        const xMinus = (x - 1 + w) % w;
-        dx[rOffset + x] = (data[rOffset + xPlus] - data[rOffset + xMinus]) * 0.5;
-
-        const yPlus = (y + 1) % h;
-        const yMinus = (y - 1 + h) % h;
-        dy[rOffset + x] = (data[yPlus * w + x] - data[yMinus * w + x]) * 0.5;
+        dx[rOffset + w - 1] = (data[rOffset] - data[rOffset + w - 2]) * 0.5;
       } else {
-        if (x === 0) {
-          dx[rOffset + x] = data[rOffset + 1] - data[rOffset];
-        } else if (x === w - 1) {
-          dx[rOffset + x] = data[rOffset + w - 1] - data[rOffset + w - 2];
-        } else {
-          dx[rOffset + x] = (data[rOffset + x + 1] - data[rOffset + x - 1]) * 0.5;
-        }
-
-        if (y === 0) {
-          dy[rOffset + x] = data[1 * w + x] - data[0 * w + x];
-        } else if (y === h - 1) {
-          dy[rOffset + x] = data[(h - 1) * w + x] - data[(h - 2) * w + x];
-        } else {
-          dy[rOffset + x] = (data[(y + 1) * w + x] - data[(y - 1) * w + x]) * 0.5;
-        }
+        dx[rOffset + w - 1] = data[rOffset + w - 1] - data[rOffset + w - 2];
       }
+      dy[rOffset + w - 1] = (data[yPlusOffset + w - 1] - data[yMinusOffset + w - 1]) * 0.5;
     }
   }
   return { dx, dy };
@@ -517,7 +537,7 @@ export async function saveGrayPNG(
   await sharp(Buffer.from(buf.buffer), {
     raw: { width: w, height: h, channels: 1 },
   })
-    .png()
+    .png({ compressionLevel: 5, effort: 1 })
     .toFile(outPath);
 }
 
@@ -534,7 +554,7 @@ export async function saveRgbPNG(
   await sharp(Buffer.from(buf.buffer), {
     raw: { width: w, height: h, channels: 3 },
   })
-    .png()
+    .png({ compressionLevel: 5, effort: 1 })
     .toFile(outPath);
 }
 
