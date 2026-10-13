@@ -1,14 +1,10 @@
-__pycache__/
-*.pyc
-build/
+node_modules/
 dist/
-ci-data/
 outputs/*
 !outputs/.gitkeep
 uploads/*
 !uploads/.gitkeep
 inbox/
-launcher.log
-app.log
-_backup_before_seamless/
+*.log
 .DS_Store
+.env

@@ -1,0 +1,8 @@
+{
+  "name": "Texture Map Maker",
+  "description": "Free offline PBR texture map generator: diffuse to normal, height, roughness, and AO maps with live 3D preview and ZIP export.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -4,7 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Texture Map Maker · Free PBR</title>
-  <link rel="stylesheet" href="/static/style.css?v=8" />
+  <meta name="description" content="Free offline PBR texture map generator: diffuse to normal, height, roughness, and AO maps with live 3D preview and ZIP export." />
+  <meta property="og:title" content="Texture Map Maker" />
+  <meta property="og:description" content="Free offline PBR texture map generator: diffuse to normal, height, roughness, and AO maps with live 3D preview and ZIP export." />
+  <link rel="stylesheet" href="/static/style.css?v=9" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2310b981'/%3E%3Ctext x='32' y='42' text-anchor='middle' font-size='18' fill='white'%3EPBR%3C/text%3E%3C/svg%3E" />
   <script type="importmap">
   {
@@ -22,11 +25,20 @@
         <div class="logo">PBR</div>
         <div>
           <h1>Texture Map Maker <span class="version">v{{ version }}</span></h1>
-          <p class="subtitle">Diffuse → maps → live 3D material preview</p>
+          <p class="subtitle">Diffuse → PBR maps & ORM → Live 3D shader ball preview</p>
         </div>
       </div>
       <div class="header-actions">
-        <a id="downloadBtn" class="btn-download disabled" href="/api/download-zip">Download all (ZIP)</a>
+        <div class="naming-preset-wrap">
+          <label for="namingPreset" class="preset-label">Naming Preset</label>
+          <select id="namingPreset" class="preset-select" title="File naming convention for downloaded ZIP">
+            <option value="standard" selected>Standard (diffuse / normal / orm)</option>
+            <option value="unreal">Unreal Engine (_BaseColor / _Normal / _ORM)</option>
+            <option value="unity">Unity (_Albedo / _Normal / _MaskMap)</option>
+            <option value="blender">Blender (_diffuse / _nor / _rough)</option>
+          </select>
+        </div>
+        <a id="downloadBtn" class="btn-download disabled" href="/api/download-zip?preset=standard">Download all (ZIP)</a>
       </div>
     </header>
 
@@ -44,14 +56,31 @@
           </div>
           <input id="fileInput" type="file" accept="image/*" hidden />
 
-          <label class="field">
-            Max resolution
-            <select id="maxSize">
-              <option value="1024">1024</option>
-              <option value="2048" selected>2048</option>
-              <option value="4096">4096</option>
-            </select>
+          <div class="field-row">
+            <label class="field">
+              Max resolution
+              <select id="maxSize">
+                <option value="1024">1024</option>
+                <option value="2048" selected>2048</option>
+                <option value="4096">4096</option>
+              </select>
+            </label>
+            <label class="field">
+              Aspect Ratio
+              <select id="aspectMode" title="Handling for non-square textures">
+                <option value="keep" selected>Keep Ratio (Native)</option>
+                <option value="crop">Crop to 1:1 Square</option>
+                <option value="pad">Pad to Square</option>
+                <option value="stretch">Stretch to 1:1</option>
+              </select>
+            </label>
+          </div>
+
+          <label class="slider" title="Multi-scale high-pass filter that removes baked directional shadows & ambient lighting">
+            Delighting <input type="range" id="delight" min="0" max="1" step="0.05" value="0" /><span class="val">0</span>
           </label>
+          <p class="hint">Delighting removes baked directional shadows before map generation.</p>
+
           <button id="generateBtn" class="btn-primary" disabled type="button">Regenerate</button>
           <div id="status" class="status"></div>
           <div id="errorBox" class="error"></div>
@@ -59,7 +88,7 @@
 
         <section class="card seamless-card">
           <div class="card-head">
-            <h2>Seamless</h2>
+            <h2>Seamless Tiling</h2>
             <label class="switch" title="Make the texture tile without visible seams">
               <input type="checkbox" id="seamless" />
               <span class="switch-track"><span class="switch-thumb"></span></span>
@@ -85,22 +114,32 @@
           </div>
 
           <div class="spec-panel" data-panel="normal">
+            <div class="seg seg-normal-format" id="normalFormatSeg" role="radiogroup" aria-label="Normal map format">
+              <button type="button" class="seg-btn active" data-format="opengl" title="OpenGL: Blender, Unity, WebGL (+Y green up)">OpenGL (+Y)</button>
+              <button type="button" class="seg-btn" data-format="directx" title="DirectX: Unreal Engine, 3ds Max (-Y green down)">DirectX (-Y)</button>
+            </div>
             <label class="slider">Strength <input type="range" id="normal_strength" min="0.2" max="8" step="0.1" value="2" /><span class="val">2</span></label>
+            <label class="slider">Macro detail <input type="range" id="normal_macro_detail" min="0" max="1" step="0.05" value="0.35" /><span class="val">0.35</span></label>
             <label class="slider">Blur <input type="range" id="normal_blur" min="0" max="4" step="0.1" value="0" /><span class="val">0</span></label>
-            <label class="check"><input type="checkbox" id="normal_invert_x" /> Invert X</label>
-            <label class="check"><input type="checkbox" id="normal_invert_y" checked /> Invert Y (OpenGL)</label>
-            <p class="hint">OpenGL / Blender: Invert Y on · DirectX: off</p>
+            <label class="check"><input type="checkbox" id="normal_invert_x" /> Invert X (+X / -X)</label>
+            <label class="check"><input type="checkbox" id="normal_invert_y" checked /> Green Flip (Invert Y)</label>
+            <p class="hint">OpenGL / Blender / Unity: +Y · Unreal Engine (DirectX): -Y</p>
           </div>
 
           <div class="spec-panel" data-panel="height" hidden>
             <label class="slider">Strength <input type="range" id="height_strength" min="0.1" max="3" step="0.05" value="1" /><span class="val">1</span></label>
             <label class="slider">Blur <input type="range" id="height_blur" min="0" max="8" step="0.1" value="0.5" /><span class="val">0.5</span></label>
             <label class="slider">Contrast <input type="range" id="height_contrast" min="0.2" max="3" step="0.05" value="1" /><span class="val">1</span></label>
-            <label class="slider">Level <input type="range" id="height_level" min="-0.4" max="0.4" step="0.02" value="0" /><span class="val">0</span></label>
-            <label class="check"><input type="checkbox" id="height_invert" /> Invert</label>
+            <label class="slider">Mid-level <input type="range" id="height_level" min="-0.4" max="0.4" step="0.02" value="0" /><span class="val">0</span></label>
+            <label class="check"><input type="checkbox" id="height_invert" /> Invert displacement</label>
+            <p class="hint">White = peaks / extrusions · Black = depressions. Mid-level centers baseline.</p>
           </div>
 
           <div class="spec-panel" data-panel="roughness" hidden>
+            <div class="seg" id="roughnessModeSeg" role="radiogroup" aria-label="Roughness mode">
+              <button type="button" class="seg-btn active" data-invert="false">Roughness (PBR)</button>
+              <button type="button" class="seg-btn" data-invert="true">Glossiness (Invert)</button>
+            </div>
             <label class="field">Method
               <select id="roughness_method">
                 <option value="variance" selected>Local detail (variance)</option>
@@ -110,31 +149,75 @@
             </label>
             <label class="slider">Strength <input type="range" id="roughness_strength" min="0" max="2" step="0.05" value="1" /><span class="val">1</span></label>
             <label class="slider">Base <input type="range" id="roughness_base" min="0" max="1" step="0.02" value="0.5" /><span class="val">0.5</span></label>
+            <label class="slider">Min clamp <input type="range" id="roughness_min" min="0" max="1" step="0.02" value="0" /><span class="val">0</span></label>
+            <label class="slider">Max clamp <input type="range" id="roughness_max" min="0" max="1" step="0.02" value="1" /><span class="val">1</span></label>
             <label class="slider">Blur <input type="range" id="roughness_blur" min="0" max="10" step="0.1" value="1.5" /><span class="val">1.5</span></label>
             <label class="slider">Contrast <input type="range" id="roughness_contrast" min="0.2" max="3" step="0.05" value="1" /><span class="val">1</span></label>
             <label class="check"><input type="checkbox" id="roughness_invert" /> Invert (smoothness)</label>
-            <p class="hint">White = rough · Black = smooth</p>
+            <p class="hint">White = rough/matte · Black = smooth/mirror</p>
           </div>
 
           <div class="spec-panel" data-panel="ao" hidden>
             <label class="check"><input type="checkbox" id="include_ao" checked /> Include AO map</label>
             <label class="slider">Strength <input type="range" id="ao_strength" min="0.2" max="3" step="0.05" value="1" /><span class="val">1</span></label>
-            <label class="slider">Blur <input type="range" id="ao_blur" min="0" max="12" step="0.1" value="2" /><span class="val">2</span></label>
+            <label class="slider">Radius / Blur <input type="range" id="ao_blur" min="0.5" max="14" step="0.5" value="2.5" /><span class="val">2.5</span></label>
+            <label class="slider">Cavity dark <input type="range" id="ao_exponent" min="1.0" max="2.8" step="0.1" value="1.2" /><span class="val">1.2</span></label>
+            <p class="hint">Ambient occlusion darkens cracks and crevices where indirect light cannot reach.</p>
+          </div>
+
+          <div class="spec-panel" data-panel="orm" hidden>
+            <p class="hint">Packed texture for Unreal Engine & glTF pipelines:</p>
+            <ul class="channel-list">
+              <li><strong style="color: #f87171;">R:</strong> Ambient Occlusion (AO)</li>
+              <li><strong style="color: #4ade80;">G:</strong> Roughness</li>
+              <li><strong style="color: #60a5fa;">B:</strong> Metallic (or Height)</li>
+            </ul>
+            <label class="field">
+              Blue channel
+              <select id="orm_pack_blue">
+                <option value="metallic" selected>Metallic (0.0 Dielectric)</option>
+                <option value="height">Height / Displacement</option>
+              </select>
+            </label>
+            <p class="hint">Saves draw calls and GPU memory in modern game engines.</p>
           </div>
 
           <div class="spec-panel" data-panel="view3d" hidden>
-            <p class="hint">Full PBR material on a simple mesh. Drag to orbit · scroll to zoom.</p>
+            <p class="hint">Full PBR material on 3D meshes. Drag to orbit · scroll to zoom.</p>
             <div class="shape-row">
-              <span class="shape-label">Shape</span>
+              <span class="shape-label">Mesh</span>
               <div class="shape-btns" id="shapeBtns">
                 <button type="button" class="shape-btn active" data-shape="plane">Plane</button>
                 <button type="button" class="shape-btn" data-shape="cube">Cube</button>
-                <button type="button" class="shape-btn" data-shape="sphere">Sphere</button>
+                <button type="button" class="shape-btn" data-shape="cylinder">Cylinder</button>
+                <button type="button" class="shape-btn" data-shape="sphere" title="Quad Sphere (Pinch-Free)">Sphere</button>
+                <button type="button" class="shape-btn" data-shape="shaderball" title="Material Test Ball">Shader Ball</button>
               </div>
             </div>
-            <label class="slider">Tiling <input type="range" id="view_repeat" min="1" max="4" step="1" value="1" /><span class="val">1</span></label>
+
+            <div class="shape-row">
+              <span class="shape-label">Lighting</span>
+              <div class="shape-btns" id="lightPresetBtns">
+                <button type="button" class="shape-btn active" data-preset="studio">Studio</button>
+                <button type="button" class="shape-btn" data-preset="warm">Warm</button>
+                <button type="button" class="shape-btn" data-preset="overcast">Overcast</button>
+                <button type="button" class="shape-btn" data-preset="dramatic">Rim</button>
+              </div>
+            </div>
+
+            <div class="shape-row">
+              <span class="shape-label">Tiling</span>
+              <div class="shape-btns" id="tilingPresetBtns">
+                <button type="button" class="shape-btn active" data-repeat="1">1×</button>
+                <button type="button" class="shape-btn" data-repeat="2">2×</button>
+                <button type="button" class="shape-btn" data-repeat="4">4×</button>
+                <button type="button" class="shape-btn" data-repeat="8">8×</button>
+              </div>
+            </div>
+            <label class="slider">UV Repeat <input type="range" id="view_repeat" min="1" max="8" step="1" value="1" /><span class="val">1</span></label>
             <label class="slider">Normal scale <input type="range" id="view_normal_scale" min="0" max="3" step="0.05" value="1" /><span class="val">1</span></label>
             <label class="slider">Displacement <input type="range" id="view_disp_scale" min="0" max="0.15" step="0.005" value="0.02" /><span class="val">0.02</span></label>
+            <label class="slider">Metalness <input type="range" id="view_metalness" min="0" max="1" step="0.05" value="0" /><span class="val">0</span></label>
             <label class="slider">Env light <input type="range" id="view_light" min="0.3" max="2.5" step="0.05" value="1.1" /><span class="val">1.1</span></label>
             <label class="check"><input type="checkbox" id="view_auto_rotate" /> Auto-rotate</label>
           </div>
@@ -148,7 +231,8 @@
           <button type="button" class="tab" data-tab="height" role="tab">Height</button>
           <button type="button" class="tab" data-tab="roughness" role="tab">Roughness</button>
           <button type="button" class="tab" data-tab="ao" role="tab">AO</button>
-          <button type="button" class="tab tab-3d" data-tab="view3d" role="tab">3D view</button>
+          <button type="button" class="tab" data-tab="orm" role="tab">Packed ORM</button>
+          <button type="button" class="tab tab-3d" data-tab="view3d" role="tab">3D View</button>
         </div>
 
         <div class="viewer-stage" id="viewerStage2d">
@@ -158,12 +242,28 @@
             </div>
             <img id="mainPreview" alt="Map preview" hidden />
             <div id="tiledPreview" class="tiled-preview" hidden></div>
+            <div id="seamGridOverlay" class="seam-grid-overlay" hidden></div>
             <div id="liveBadge" class="live-badge" hidden>LIVE</div>
           </div>
         </div>
 
         <div class="viewer-stage viewer-stage-3d" id="viewerStage3d" hidden>
           <div class="viewer-square viewer-3d-wrap" id="viewer3dWrap">
+            <!-- 3D Viewport on-canvas floating toolbar -->
+            <div class="viewport-toolbar">
+              <div class="vp-toolbar-group" id="vpMeshGroup" title="Switch 3D mesh">
+                <button type="button" class="vp-btn active" data-shape="plane">Plane</button>
+                <button type="button" class="vp-btn" data-shape="cube">Cube</button>
+                <button type="button" class="vp-btn" data-shape="cylinder">Cylinder</button>
+                <button type="button" class="vp-btn" data-shape="sphere">Sphere</button>
+                <button type="button" class="vp-btn" data-shape="shaderball">Shader Ball</button>
+              </div>
+              <div class="vp-toolbar-group" id="vpTilingGroup" title="UV Repeat Scale">
+                <button type="button" class="vp-btn active" data-repeat="1">1×</button>
+                <button type="button" class="vp-btn" data-repeat="2">2×</button>
+                <button type="button" class="vp-btn" data-repeat="4">4×</button>
+              </div>
+            </div>
             <canvas id="view3dCanvas"></canvas>
             <div id="view3dEmpty" class="viewer-empty">
               Generate maps first, then open 3D view
@@ -174,22 +274,24 @@
         <div class="viewer-footer">
           <span id="viewerLabel">Normal map</span>
           <div class="footer-right">
+            <button type="button" id="seamGridToggle" class="btn-tool" title="Show tile seam boundary lines" hidden>Grid lines</button>
             <div class="seg seg-small" id="tileBtns" role="radiogroup" aria-label="Tile preview">
               <button type="button" class="seg-btn active" data-tile="1">1×1</button>
               <button type="button" class="seg-btn" data-tile="2">2×2</button>
               <button type="button" class="seg-btn" data-tile="3">3×3</button>
+              <button type="button" class="seg-btn" data-tile="4">4×4</button>
             </div>
-          <a id="saveCurrentBtn" class="btn-save disabled" href="#" download="normal.png">Save this map</a>
+            <a id="saveCurrentBtn" class="btn-save disabled" href="#" download="normal.png">Save this map</a>
           </div>
         </div>
       </main>
     </div>
 
     <p class="footer-note">
-      Use map tabs to tune each texture, then <strong>3D view</strong> to preview the full material on a plane, cube, or sphere.
-      Drag to orbit · scroll to zoom. Download ZIP for Unreal / Unity / Blender.
+      Tune PBR maps, then use <strong>3D view</strong> to inspect with Quad Sphere, Shader Ball, Plane, or Cylinder.
+      Channel packing (ORM) ready for Unreal Engine, Unity, and Blender.
     </p>
   </div>
-  <script type="module" src="/static/app.js?v=8"></script>
+  <script type="module" src="/static/app.js?v=9"></script>
 </body>
 </html>

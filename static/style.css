@@ -568,3 +568,127 @@ select {
   vertical-align: middle;
   margin-left: 4px;
 }
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.naming-preset-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 4px 10px;
+}
+
+.preset-label {
+  font-size: 0.76rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.preset-select {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 4px 0;
+  outline: none;
+}
+
+.channel-list {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8rem;
+}
+
+.viewport-toolbar {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.vp-toolbar-group {
+  display: flex;
+  background: rgba(10, 20, 15, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 3px;
+  pointer-events: auto;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.vp-btn {
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  border-radius: 7px;
+  padding: 5px 9px;
+  cursor: pointer;
+  transition: 0.12s ease;
+}
+
+.vp-btn:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.vp-btn.active {
+  background: linear-gradient(135deg, #10b981, #34d399);
+  color: #042f1a;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
+}
+
+.seam-grid-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, rgba(52, 211, 153, 0.45) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(52, 211, 153, 0.45) 1px, transparent 1px);
+  background-size: 50% 50%;
+  border: 1px solid rgba(52, 211, 153, 0.6);
+  z-index: 5;
+}
+
+.btn-tool {
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: 0.12s ease;
+}
+
+.btn-tool:hover,
+.btn-tool.active {
+  background: rgba(52, 211, 153, 0.15);
+  border-color: var(--accent);
+  color: #a7f3d0;
+}
+
